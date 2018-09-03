@@ -266,14 +266,14 @@ fn main() {
                 } else if !idle {
                     let new_sensor_range = sensor_to_range(read_file_to_u32(&als).expect("Error reading ambient light sensor"));
                     if new_sensor_range != sensor_range {
-                        sensor_range = new_sensor_range;
-                        let vals = map_sensor_range_to_bl_vals(sensor_range);
+                        let vals = map_sensor_range_to_bl_vals(new_sensor_range);
                         if !display_override {
                             write_u32_to_file(&display_backlight_file, mult(vals.display, display_max_brightness)).expect("Failed to write file");
                         }
                         if !keyboard_override {
                             write_u32_to_file(&keyboard_backlight_file, mult(vals.keyboard, keyboard_max_brightness)).expect("Failed to write file");
                         }
+                        sensor_range = new_sensor_range;
                     }
                 }
                 idle_time += tick_time;
