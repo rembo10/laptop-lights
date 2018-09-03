@@ -170,8 +170,15 @@ fn main() {
     let tick_time = 5;
     let mut keyboard_override = false;
     let mut display_override = false;
-    let mut current_keyboard_brightness = read_file_to_u32(&keyboard_backlight_file).expect("Error reading keyboard brightness");
-    let mut current_display_brightness = read_file_to_u32(&display_backlight_file).expect("Error reading display brightness");
+ 
+    // Initialize the brightness based the als read
+    let vals = map_sensor_range_to_bl_vals(sensor_range);
+
+    let mut current_keyboard_brightness = mult(vals.keyboard, keyboard_max_brightness);
+    let mut current_display_brightness = mult(vals.display, display_max_brightness);
+
+    write_u32_to_file(&display_backlight_file, current_display_brightness).expect("Failed to write file");
+    write_u32_to_file(&keyboard_backlight_file, current_keyboard_brightness).expect("Failed to write file");
 
     // Timer thread
     let timer_tx = mpsc::Sender::clone(&tx);
