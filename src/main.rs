@@ -22,31 +22,13 @@ enum Message {
     DisplayBrightnessUp,
 }
 
-struct BrightnessValues {
-    display: f32,
-    keyboard: f32,
+fn als_to_kb(als: u32, kb_max: u32) -> u32 {
+    if als < 30 {(0.1 * kb_max as f32) as u32} else {0}
 }
 
-fn sensor_to_range(sensor_value: u32) -> u32 {
-    match sensor_value {
-        0...20 => 1,
-        20...50 => 2,
-        50...100 => 3,
-        100...200 => 4,
-        200...300 => 5,
-        _ => 6
-    }
-}
-
-fn map_sensor_range_to_bl_vals(sensor_range: u32) -> BrightnessValues {
-    match sensor_range {
-        1 => BrightnessValues { keyboard: 0.1, display: 0.15},
-        2 => BrightnessValues { keyboard: 0.0, display: 0.20},
-        3 => BrightnessValues { keyboard: 0.0, display: 0.25},
-        4 => BrightnessValues { keyboard: 0.0, display: 0.30},
-        5 => BrightnessValues { keyboard: 0.0, display: 0.35},
-        _ => BrightnessValues { keyboard: 0.0, display: 0.40},
-    }
+fn als_to_dsp(als: u32, bl_max: u32) -> u32 {
+    let als_bl_max = 0.6 * bl_max as f32;
+    (0.3 * als_bl_max as f32 + (als as f32/500.0 * (0.7 * als_bl_max as f32))) as u32
 }
 
 fn read_file_to_string(filename: &str) -> std::io::Result<String> {
@@ -158,7 +140,8 @@ fn main() {
     // Construct initial state
     let keyboard_max_brightness = get_max_brightness(keyboard_backlight).expect("Error getting max brightness of keyboard leds");
     let display_max_brightness = get_max_brightness(display_backlight).expect("Error getting max brightness of backlight");
-    let mut sensor_range = sensor_to_range(read_file_to_u32(&als).expect("Error reading ambient light sensor"));
+    
+    let mut als_value = read_file_to_u32(&als).expect("Error reading ambient light sensor");
 
     let keyboard_step = keyboard_max_brightness / 10;
     let display_step = display_max_brightness / 15;
@@ -171,11 +154,9 @@ fn main() {
     let mut keyboard_override = false;
     let mut display_override = false;
  
-    // Initialize the brightness based the als read
-    let vals = map_sensor_range_to_bl_vals(sensor_range);
 
-    let mut current_keyboard_brightness = mult(vals.keyboard, keyboard_max_brightness);
-    let mut current_display_brightness = mult(vals.display, display_max_brightness);
+    let mut current_keyboard_brightness = als_to_kb(als_value, keyboard_max_brightness);
+    let mut current_display_brightness = als_to_dsp(als_value, display_max_brightness);
 
     write_u32_to_file(&display_backlight_file, current_display_brightness).expect("Failed to write file");
     write_u32_to_file(&keyboard_backlight_file, current_keyboard_brightness).expect("Failed to write file");
@@ -271,16 +252,19 @@ fn main() {
                     write_u32_to_file(&keyboard_backlight_file, 0).expect("Failed to write file");
                     idle = true;
                 } else if !idle {
-                    let new_sensor_range = sensor_to_range(read_file_to_u32(&als).expect("Error reading ambient light sensor"));
-                    if new_sensor_range != sensor_range {
-                        let vals = map_sensor_range_to_bl_vals(new_sensor_range);
+                    let new_als_value = read_file_to_u32(&als).expect("Error reading ambient light sensor");
+                    if new_als_value != als_value {
+                        als_value = new_als_value;
                         if !display_override {
-                            write_u32_to_file(&display_backlight_file, mult(vals.display, display_max_brightness)).expect("Failed to write file");
+                            let new_dsp_brightness = als_to_dsp(als_value, display_max_brightness);
+                            write_u32_to_file(&display_backlight_file, new_dsp_brightness).expect("Failed to write file");
+                            current_display_brightness = new_dsp_brightness;
                         }
                         if !keyboard_override {
-                            write_u32_to_file(&keyboard_backlight_file, mult(vals.keyboard, keyboard_max_brightness)).expect("Failed to write file");
+                            let new_kb_brightness = als_to_kb(als_value, keyboard_max_brightness);
+                            write_u32_to_file(&keyboard_backlight_file, new_kb_brightness).expect("Failed to write file");
+                            current_keyboard_brightness = new_kb_brightness;
                         }
-                        sensor_range = new_sensor_range;
                     }
                 }
                 idle_time += tick_time;
