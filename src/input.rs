@@ -7,7 +7,7 @@ pub struct InputEvent {
     tv_usec: isize,
     pub type_: u16,
     pub code: u16,
-    pub value: i32
+    pub value: i32,
 }
 
 pub fn is_key_event(type_: u16) -> bool {

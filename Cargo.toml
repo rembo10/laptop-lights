@@ -1,7 +1,11 @@
 [package]
 name = "laptop-lights"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["rembo10 <rembo10@users.noreply.github.com>"]
 
 [dependencies]
+config = "0.9"
+docopt = "1"
+serde = "1.0"
+serde_derive = "1.0"
 libc = "0.2"
