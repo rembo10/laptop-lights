@@ -14,11 +14,20 @@ pub fn run(s: Settings, kbd: BacklightDevice, dsp: BacklightDevice) {
 
     let mut idle = false;
     let mut idle_time = 0;
-    let mut als_value = 0;
-    let mut dsp_val = 0;
-    let mut kbd_val = 0;
+    let mut als_value: u32;
+    let mut dsp_val: u32;
+    let mut kbd_val: u32;
     let mut kbd_override = false;
     let mut dsp_override = false;
+
+    // Initialize everything
+    als_value = read_file_to_u32(&s.paths.illuminance).unwrap();
+    dsp_val = als_to_dsp(als_value, dsp.max);
+    kbd_val = als_to_kb(als_value, kbd.max);
+
+    // Write initial values
+    write_u32_to_file(&dsp.file, dsp_val).unwrap();
+    write_u32_to_file(&kbd.file, kbd_val).unwrap();
 
     // Launch out threads
     let (tx, rx) = mpsc::channel();
